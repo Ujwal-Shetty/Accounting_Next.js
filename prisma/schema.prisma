@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                     String         @id @default(uuid())
+  name                   String
+  email                  String         @unique
+  password               String
+  emailVerified          Boolean        @default(false)
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  companyUsers           CompanyUser[]
+  invitationsSent        Invitation[]   @relation("InvitedBy")
+}
+
+model Company {
+  id                String         @id @default(uuid())
+  name              String
+  gstNumber         String?
+  address           String?
+  phone             String?
+  email             String?
+  financialYearStart Int           @default(4)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  companyUsers      CompanyUser[]
+  invitations       Invitation[]
+}
+
+model CompanyUser {
+  id        String   @id @default(uuid())
+  role      Role     @default(STAFF)
+  status    Status   @default(ACTIVE)
+  joinedAt  DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@index([companyId])
+}
+
+model Invitation {
+  id        String           @id @default(uuid())
+  email     String
+  role      Role             @default(STAFF)
+  token     String           @unique
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  invitedBy User     @relation("InvitedBy", fields: [invitedById], references: [id])
+  invitedById String
+
+  @@unique([companyId, email])
+  @@index([token])
+  @@index([email])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  STAFF
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
